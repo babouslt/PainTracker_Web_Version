@@ -123,7 +123,7 @@ export default function HomePage() {
       <div className="px-6 pb-12">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white text-center mb-8">
-            Que souhaitez-vous faire aujourd'hui ?
+            Que souhaitez-vous faire aujourd&apos;hui ?
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -152,7 +152,7 @@ export default function HomePage() {
                   Analyse médicale
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300">
-                  Analysez vos symptômes avec l'IA
+                  Analysez vos symptômes avec l&apos;IA
                 </p>
               </div>
             </Link>

@@ -403,7 +403,7 @@ export default function AbonnementPage() {
                   Statistiques Avancées
                 </h4>
                 <p className="text-gray-600 dark:text-gray-400 text-sm">
-                  Suivez l'évolution de vos symptômes avec des graphiques
+                  Suivez l&apos;évolution de vos symptômes avec des graphiques
                   détaillés
                 </p>
               </div>

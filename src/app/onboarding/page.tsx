@@ -22,6 +22,26 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Extract user data from JWT token on component mount
+  React.useEffect(() => {
+    const token = localStorage.getItem("jwt");
+    if (token) {
+      try {
+        const decoded = jwtDecode<{
+          body?: { id?: string; firstName?: string; lastName?: string };
+        }>(token);
+        if (decoded.body?.firstName) {
+          setFirstName(decoded.body.firstName);
+        }
+        if (decoded.body?.lastName) {
+          setLastName(decoded.body.lastName);
+        }
+      } catch (error) {
+        console.error("Error decoding JWT token:", error);
+      }
+    }
+  }, []);
+
   const handleOnboarding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName || !lastName || !age || !height || !weight || !gender) {
