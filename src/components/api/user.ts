@@ -41,3 +41,30 @@ export async function updateProfile(
     };
   }
 }
+
+export async function updatePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+  token: string
+) {
+  try {
+    const response = await fetch(`${BDD_API_URL}users/${userId}/password`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        currentPassword,
+        newPassword,
+      }),
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      message: "Erreur lors de la mise à jour du mot de passe",
+    };
+  }
+}

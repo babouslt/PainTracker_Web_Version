@@ -17,6 +17,7 @@ export interface RegisterData {
 export interface RegisterResponse {
   success: boolean;
   message?: string;
+  token?: string;
 }
 
 export const login = async (
@@ -24,7 +25,7 @@ export const login = async (
   password: string
 ): Promise<LoginResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -57,7 +58,7 @@ export const register = async (
   userData: RegisterData
 ): Promise<RegisterResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    const response = await fetch(`${API_BASE_URL}auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -71,6 +72,7 @@ export const register = async (
       return {
         success: true,
         message: "Inscription réussie",
+        token: data.token,
       };
     } else {
       return {
