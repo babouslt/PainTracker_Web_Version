@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2023-10-16",
+  apiVersion: "2025-07-30.basil",
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
@@ -47,16 +47,6 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionDeleted(
           event.data.object as Stripe.Subscription
         );
-        break;
-
-      case "invoice.payment_succeeded":
-        await handleInvoicePaymentSucceeded(
-          event.data.object as Stripe.Invoice
-        );
-        break;
-
-      case "invoice.payment_failed":
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
         break;
 
       default:
@@ -110,44 +100,6 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
     if (userId) {
       await updateUserPremiumStatus(userId, false);
-    }
-  } catch (error) {
-    // Gestion silencieuse de l'erreur
-  }
-}
-
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  try {
-    const { subscription: subscriptionId } = invoice;
-
-    if (subscriptionId) {
-      const subscription = await stripe.subscriptions.retrieve(
-        subscriptionId as string
-      );
-      const userId = subscription.metadata.userId;
-
-      if (userId) {
-        await updateUserPremiumStatus(userId, true);
-      }
-    }
-  } catch (error) {
-    // Gestion silencieuse de l'erreur
-  }
-}
-
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  try {
-    const { subscription: subscriptionId } = invoice;
-
-    if (subscriptionId) {
-      const subscription = await stripe.subscriptions.retrieve(
-        subscriptionId as string
-      );
-      const userId = subscription.metadata.userId;
-
-      if (userId) {
-        await updateUserPremiumStatus(userId, false);
-      }
     }
   } catch (error) {
     // Gestion silencieuse de l'erreur
