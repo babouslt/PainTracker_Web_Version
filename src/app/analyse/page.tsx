@@ -331,7 +331,7 @@ export default function AnalysePage() {
                 <div className="flex items-center justify-center w-6 h-6 bg-white/20 rounded-full mr-3 group-hover:bg-white/30 transition-colors">
                   <span className="text-sm">📋</span>
                 </div>
-                <span>Voir l'historique</span>
+                <span>Voir l&apos;historique</span>
                 <svg
                   className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform"
                   fill="none"
@@ -685,7 +685,7 @@ export default function AnalysePage() {
                               <span className="text-white text-sm">📊</span>
                             </div>
                             <span className="font-semibold text-blue-700 dark:text-blue-300">
-                              Voir les résultats de l'analyse
+                              Voir les résultats de l&apos;analyse
                             </span>
                           </div>
                           <svg
