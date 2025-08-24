@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { register as registerApi } from "@/components/api/auth";
+import { sendWelcomeEmail } from "@/components/api/mail";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function RegisterPage() {
@@ -38,15 +39,39 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      const response = await registerApi(
-        formData.firstName,
-        formData.lastName,
-        formData.email,
-        formData.password
-      );
+      const response = await registerApi({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+      });
+
       if (response.success) {
-        alert("Inscription réussie ! Vous pouvez maintenant vous connecter.");
-        router.replace("/login");
+        // Envoyer l'email de bienvenue
+        try {
+          await sendWelcomeEmail({
+            email: formData.email,
+            firstName: formData.firstName,
+          });
+          console.log("Email de bienvenue envoyé avec succès");
+        } catch (emailError) {
+          console.error(
+            "Erreur lors de l'envoi de l'email de bienvenue:",
+            emailError
+          );
+          // On continue même si l'email échoue
+        }
+
+        if (response.token) {
+          // Automatically log in the user
+          localStorage.setItem("jwt", response.token);
+          // Redirect to onboarding page
+          router.replace("/onboarding");
+        } else {
+          // Fallback if no token (shouldn't happen with current AuthService)
+          alert("Inscription réussie ! Vous pouvez maintenant vous connecter.");
+          router.replace("/login");
+        }
       } else {
         alert(response.message || "Erreur lors de l'inscription");
       }
