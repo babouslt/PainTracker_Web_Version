@@ -4,7 +4,11 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import Navigation from "@/components/Navigation";
-import { getUserById } from "@/components/api/user";
+import {
+  getUserById,
+  updateProfile,
+  updatePassword,
+} from "@/components/api/user";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface User {
@@ -22,10 +26,50 @@ interface User {
   role?: string;
 }
 
+interface EditableUser {
+  firstName: string;
+  lastName: string;
+  age: string;
+  height: string;
+  weight: string;
+  gender: string;
+}
+
+interface PasswordChange {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<EditableUser>({
+    firstName: "",
+    lastName: "",
+    age: "",
+    height: "",
+    weight: "",
+    gender: "",
+  });
+  const [passwordData, setPasswordData] = useState<PasswordChange>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -48,7 +92,17 @@ export default function ProfilePage() {
 
         const response = await getUserById(userId, token);
         if (response.success) {
-          setUser(response.user || response);
+          const userData = response.user || response;
+          setUser(userData);
+          // Initialiser les données d'édition
+          setEditingUser({
+            firstName: userData.firstName || "",
+            lastName: userData.lastName || "",
+            age: userData.age || "",
+            height: userData.height || "",
+            weight: userData.weight || "",
+            gender: userData.gender || "",
+          });
         } else {
           setError("Erreur lors de la récupération du profil");
         }
@@ -62,9 +116,161 @@ export default function ProfilePage() {
     fetchUserProfile();
   }, [router]);
 
+  const handleEdit = () => {
+    setIsEditing(true);
+    setSaveMessage(null);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    // Restaurer les données originales
+    if (user) {
+      setEditingUser({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        age: user.age || "",
+        height: user.height || "",
+        weight: user.weight || "",
+        gender: user.gender || "",
+      });
+    }
+    setSaveMessage(null);
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+
+    setSaving(true);
+    setSaveMessage(null);
+
+    try {
+      const token = localStorage.getItem("jwt");
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      const userId = user._id || user.id;
+      if (!userId) {
+        setSaveMessage({ type: "error", message: "ID utilisateur non trouvé" });
+        return;
+      }
+      const response = await updateProfile(userId, editingUser, token);
+
+      if (response.success) {
+        setUser({ ...user, ...editingUser });
+        setIsEditing(false);
+        setSaveMessage({
+          type: "success",
+          message: "Profil mis à jour avec succès !",
+        });
+
+        // Effacer le message après 3 secondes
+        setTimeout(() => setSaveMessage(null), 3000);
+      } else {
+        setSaveMessage({
+          type: "error",
+          message: response.message || "Erreur lors de la mise à jour",
+        });
+      }
+    } catch (error) {
+      setSaveMessage({
+        type: "error",
+        message: "Erreur lors de la mise à jour du profil",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleInputChange = (field: keyof EditableUser, value: string) => {
+    setEditingUser((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePasswordChange = (field: keyof PasswordChange, value: string) => {
+    setPasswordData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+
+    // Validation
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordMessage({
+        type: "error",
+        message: "Les mots de passe ne correspondent pas",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordMessage({
+        type: "error",
+        message: "Le nouveau mot de passe doit contenir au moins 6 caractères",
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+    setPasswordMessage(null);
+
+    try {
+      const token = localStorage.getItem("jwt");
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
+
+      const userId = user._id || user.id;
+      if (!userId) {
+        setPasswordMessage({
+          type: "error",
+          message: "ID utilisateur non trouvé",
+        });
+        return;
+      }
+
+      const response = await updatePassword(
+        userId,
+        passwordData.currentPassword,
+        passwordData.newPassword,
+        token
+      );
+
+      if (response.success) {
+        setPasswordMessage({
+          type: "success",
+          message: "Mot de passe mis à jour avec succès !",
+        });
+        setShowPasswordModal(false);
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+
+        // Effacer le message après 3 secondes
+        setTimeout(() => setPasswordMessage(null), 3000);
+      } else {
+        setPasswordMessage({
+          type: "error",
+          message:
+            response.message || "Erreur lors de la mise à jour du mot de passe",
+        });
+      }
+    } catch (error) {
+      setPasswordMessage({
+        type: "error",
+        message: "Erreur lors de la mise à jour du mot de passe",
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const handleStopSubscription = () => {
-    // Logique pour arrêter l&apos;abonnement
-    alert("Fonctionnalité d&apos;arrêt d&apos;abonnement à implémenter");
+    // Logique pour arrêter l'abonnement
+    alert("Fonctionnalité d'arrêt d'abonnement à implémenter");
   };
 
   if (loading) {
@@ -148,19 +354,124 @@ export default function ProfilePage() {
             <p className="text-gray-600 dark:text-gray-300 text-base">
               {user.email}
             </p>
+
+            {/* Boutons d'action */}
+            <div className="mt-4 space-y-2">
+              {!isEditing ? (
+                <div className="flex space-x-2 justify-center">
+                  <button
+                    onClick={handleEdit}
+                    className="bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    ✏️ Modifier le profil
+                  </button>
+                  <button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="bg-purple-500 hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    🔒 Changer le mot de passe
+                  </button>
+                </div>
+              ) : (
+                <div className="flex space-x-2 justify-center">
+                  <button
+                    onClick={handleCancel}
+                    className="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm"
+                  >
+                    ❌ Annuler
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors text-sm disabled:opacity-50"
+                  >
+                    {saving ? "💾 Sauvegarde..." : "💾 Sauvegarder"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Message de sauvegarde */}
+            {saveMessage && (
+              <div
+                className={`mt-3 p-3 rounded-lg text-sm ${
+                  saveMessage.type === "success"
+                    ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                    : "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
+                }`}
+              >
+                {saveMessage.message}
+              </div>
+            )}
           </div>
 
           {/* Carte des détails du profil */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-gray-200 dark:border-gray-700">
             <div className="space-y-4">
+              {/* Prénom */}
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-800 dark:text-gray-200 font-medium">
+                  Prénom
+                </span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editingUser.firstName}
+                    onChange={(e) =>
+                      handleInputChange("firstName", e.target.value)
+                    }
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Votre prénom"
+                  />
+                ) : (
+                  <span className="text-gray-800 dark:text-white">
+                    {user.firstName || "Non renseigné"}
+                  </span>
+                )}
+              </div>
+
+              {/* Nom */}
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-800 dark:text-gray-200 font-medium">
+                  Nom
+                </span>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editingUser.lastName}
+                    onChange={(e) =>
+                      handleInputChange("lastName", e.target.value)
+                    }
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Votre nom"
+                  />
+                ) : (
+                  <span className="text-gray-800 dark:text-white">
+                    {user.lastName || "Non renseigné"}
+                  </span>
+                )}
+              </div>
+
               {/* Âge */}
               <div className="flex justify-between items-center py-2">
                 <span className="text-gray-800 dark:text-gray-200 font-medium">
                   Âge
                 </span>
-                <span className="text-gray-800 dark:text-white">
-                  {user.age ? `${user.age} ans` : "Non renseigné"}
-                </span>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    value={editingUser.age}
+                    onChange={(e) => handleInputChange("age", e.target.value)}
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-20"
+                    placeholder="Âge"
+                    min="1"
+                    max="120"
+                  />
+                ) : (
+                  <span className="text-gray-800 dark:text-white">
+                    {user.age ? `${user.age} ans` : "Non renseigné"}
+                  </span>
+                )}
               </div>
 
               {/* Taille */}
@@ -168,9 +479,23 @@ export default function ProfilePage() {
                 <span className="text-gray-800 dark:text-gray-200 font-medium">
                   Taille
                 </span>
-                <span className="text-gray-800 dark:text-white">
-                  {user.height ? `${user.height} cm` : "Non renseigné"}
-                </span>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    value={editingUser.height}
+                    onChange={(e) =>
+                      handleInputChange("height", e.target.value)
+                    }
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-20"
+                    placeholder="cm"
+                    min="100"
+                    max="250"
+                  />
+                ) : (
+                  <span className="text-gray-800 dark:text-white">
+                    {user.height ? `${user.height} cm` : "Non renseigné"}
+                  </span>
+                )}
               </div>
 
               {/* Poids */}
@@ -178,9 +503,23 @@ export default function ProfilePage() {
                 <span className="text-gray-800 dark:text-gray-200 font-medium">
                   Poids
                 </span>
-                <span className="text-gray-800 dark:text-white">
-                  {user.weight ? `${user.weight} kg` : "Non renseigné"}
-                </span>
+                {isEditing ? (
+                  <input
+                    type="number"
+                    value={editingUser.weight}
+                    onChange={(e) =>
+                      handleInputChange("weight", e.target.value)
+                    }
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-20"
+                    placeholder="kg"
+                    min="30"
+                    max="300"
+                  />
+                ) : (
+                  <span className="text-gray-800 dark:text-white">
+                    {user.weight ? `${user.weight} kg` : "Non renseigné"}
+                  </span>
+                )}
               </div>
 
               {/* Sexe */}
@@ -188,13 +527,30 @@ export default function ProfilePage() {
                 <span className="text-gray-800 dark:text-gray-200 font-medium">
                   Sexe
                 </span>
-                <span className="text-gray-800 dark:text-white">
-                  {user.gender === "male"
-                    ? "Homme"
-                    : user.gender === "female"
-                    ? "Femme"
-                    : "Non renseigné"}
-                </span>
+                {isEditing ? (
+                  <select
+                    value={editingUser.gender}
+                    onChange={(e) =>
+                      handleInputChange("gender", e.target.value)
+                    }
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Sélectionner</option>
+                    <option value="male">Homme</option>
+                    <option value="female">Femme</option>
+                    <option value="other">Autre</option>
+                  </select>
+                ) : (
+                  <span className="text-gray-800 dark:text-white">
+                    {user.gender === "male"
+                      ? "Homme"
+                      : user.gender === "female"
+                      ? "Femme"
+                      : user.gender === "other"
+                      ? "Autre"
+                      : "Non renseigné"}
+                  </span>
+                )}
               </div>
 
               {/* Requêtes IA restantes */}
@@ -209,7 +565,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Bouton arrêter l&apos;abonnement (si Premium) */}
+          {/* Bouton arrêter l'abonnement (si Premium) */}
           {user.isPremium && (
             <div className="space-y-3">
               <div className="flex justify-center">
@@ -227,6 +583,107 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Modal de changement de mot de passe */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                🔒 Changer le mot de passe
+              </h3>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Mot de passe actuel */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Mot de passe actuel
+                </label>
+                <input
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) =>
+                    handlePasswordChange("currentPassword", e.target.value)
+                  }
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Votre mot de passe actuel"
+                />
+              </div>
+
+              {/* Nouveau mot de passe */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nouveau mot de passe
+                </label>
+                <input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) =>
+                    handlePasswordChange("newPassword", e.target.value)
+                  }
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nouveau mot de passe (min. 6 caract&egrave;res)"
+                />
+              </div>
+
+              {/* Confirmation du nouveau mot de passe */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Confirmer le nouveau mot de passe
+                </label>
+                <input
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) =>
+                    handlePasswordChange("confirmPassword", e.target.value)
+                  }
+                  className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Confirmez le nouveau mot de passe"
+                />
+              </div>
+
+              {/* Message de statut */}
+              {passwordMessage && (
+                <div
+                  className={`p-3 rounded-lg text-sm ${
+                    passwordMessage.type === "success"
+                      ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                      : "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200"
+                  }`}
+                >
+                  {passwordMessage.message}
+                </div>
+              )}
+
+              {/* Boutons d'action */}
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white py-2 px-4 rounded-lg font-medium transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={changingPassword}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  {changingPassword
+                    ? "Changement..."
+                    : "Changer le mot de passe"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
