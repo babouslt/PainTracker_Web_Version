@@ -16,6 +16,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,13 +28,15 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); // Réinitialiser l'erreur
+
     if (formData.password !== formData.confirmPassword) {
-      alert("Les mots de passe ne correspondent pas");
+      setError("Les mots de passe ne correspondent pas");
       return;
     }
 
     if (formData.password.length < 6) {
-      alert("Le mot de passe doit contenir au moins 6 caractères");
+      setError("Le mot de passe doit contenir au moins 6 caractères");
       return;
     }
 
@@ -69,14 +72,46 @@ export default function RegisterPage() {
           router.replace("/onboarding");
         } else {
           // Fallback if no token (shouldn't happen with current AuthService)
-          alert("Inscription réussie ! Vous pouvez maintenant vous connecter.");
           router.replace("/login");
         }
       } else {
-        alert(response.message || "Erreur lors de l'inscription");
+        // Traduire les messages d'erreur du serveur en français
+        let errorMessage = "Erreur lors de l'inscription";
+        if (response.message) {
+          if (
+            response.message.includes("already exists") ||
+            response.message.includes("duplicate") ||
+            response.message.includes("User already exists")
+          ) {
+            errorMessage = "Un compte avec cet email existe déjà";
+          } else if (response.message.includes("Invalid email")) {
+            errorMessage = "Format d'email invalide";
+          } else if (response.message.includes("password")) {
+            errorMessage =
+              "Le mot de passe ne respecte pas les critères de sécurité";
+          } else if (response.message.includes("required")) {
+            errorMessage = "Tous les champs sont obligatoires";
+          } else if (
+            response.message.includes("Error while registering user")
+          ) {
+            errorMessage = "Erreur lors de l'inscription";
+          } else if (response.message.includes("Invalid data format")) {
+            errorMessage = "Format de données invalide";
+          } else if (response.message.includes("Password must be at least")) {
+            errorMessage =
+              "Le mot de passe doit contenir au moins 8 caractères";
+          } else if (
+            response.message.includes("Email et mot de passe requis")
+          ) {
+            errorMessage = "Email et mot de passe requis";
+          } else {
+            errorMessage = response.message; // Garder le message original si on ne peut pas le traduire
+          }
+        }
+        setError(errorMessage);
       }
     } catch (error) {
-      alert("Erreur lors de l'inscription");
+      setError("Erreur lors de l'inscription");
     } finally {
       setIsLoading(false);
     }
@@ -178,6 +213,15 @@ export default function RegisterPage() {
               required
             />
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-red-600 dark:text-red-400 text-sm text-center">
+                {error}
+              </p>
+            </div>
+          )}
 
           {/* Bouton d'inscription */}
           <button
