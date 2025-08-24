@@ -10,17 +10,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); // Réinitialiser l'erreur
+
     if (!email || !password) {
-      alert("Veuillez remplir tous les champs");
+      setError("Veuillez remplir tous les champs");
       return;
     }
 
     if (!email.includes("@")) {
-      alert("Veuillez entrer une adresse email valide");
+      setError("Veuillez entrer une adresse email valide");
       return;
     }
 
@@ -31,13 +34,37 @@ export default function LoginPage() {
         if (response.token) {
           localStorage.setItem("jwt", response.token);
         }
-        alert("Connexion réussie !");
         router.replace("/home");
       } else {
-        alert(response.message || "Email ou mot de passe incorrect");
+        // Traduire les messages d'erreur du serveur en français
+        let errorMessage = "Email ou mot de passe incorrect";
+        if (response.message) {
+          if (
+            response.message.includes("Invalid credentials") ||
+            response.message.includes("incorrect") ||
+            response.message.includes("Invalid password")
+          ) {
+            errorMessage = "Email ou mot de passe incorrect";
+          } else if (response.message.includes("User not found")) {
+            errorMessage = "Utilisateur non trouvé";
+          } else if (response.message.includes("Invalid email")) {
+            errorMessage = "Format d'email invalide";
+          } else if (response.message.includes("Error while logging in")) {
+            errorMessage = "Erreur lors de la connexion";
+          } else if (
+            response.message.includes("Email and password are required")
+          ) {
+            errorMessage = "Email et mot de passe requis";
+          } else if (response.message.includes("Invalid data format")) {
+            errorMessage = "Format de données invalide";
+          } else {
+            errorMessage = response.message; // Garder le message original si on ne peut pas le traduire
+          }
+        }
+        setError(errorMessage);
       }
     } catch (error) {
-      alert("Erreur de connexion au serveur");
+      setError("Erreur de connexion au serveur");
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +115,15 @@ export default function LoginPage() {
               required
             />
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <p className="text-red-600 dark:text-red-400 text-sm text-center">
+                {error}
+              </p>
+            </div>
+          )}
 
           {/* Login Button */}
           <button
