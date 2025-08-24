@@ -120,7 +120,7 @@ export default function LoginPage() {
             href="/register"
             className="text-lg font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 ml-1"
           >
-            S'inscrire
+            S&apos;inscrire
           </Link>
         </div>
       </div>

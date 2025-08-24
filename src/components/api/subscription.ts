@@ -26,40 +26,47 @@ export interface SubscriptionResponse {
   message?: string;
 }
 
-export const getSubscriptionPlans = async (): Promise<SubscriptionResponse> => {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_PAYMENT_API_URL!}/subscription/plans`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+export interface SubscriptionPlansResponse {
+  success: boolean;
+  plans?: SubscriptionPlan[];
+  message?: string;
+}
+
+export const getSubscriptionPlans =
+  async (): Promise<SubscriptionPlansResponse> => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_PAYMENT_API_URL!}/subscription/plans`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        return {
+          success: true,
+          plans: data.plans,
+        };
+      } else {
+        return {
+          success: false,
+          message:
+            data.message ||
+            "Erreur lors de la récupération des plans d'abonnement",
+        };
       }
-    );
-
-    const data = await response.json();
-
-    if (response.ok) {
-      return {
-        success: true,
-        plans: data.plans,
-      };
-    } else {
+    } catch (error) {
       return {
         success: false,
-        message:
-          data.message ||
-          "Erreur lors de la récupération des plans d'abonnement",
+        message: "Erreur de connexion au serveur de paiement",
       };
     }
-  } catch (error) {
-    return {
-      success: false,
-      message: "Erreur de connexion au serveur de paiement",
-    };
-  }
-};
+  };
 
 export interface SubscriptionRequest {
   userId: string;
